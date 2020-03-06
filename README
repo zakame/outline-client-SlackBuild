@@ -1,0 +1,41 @@
+outline-client (cross-platform VPN or proxy client via Shadowsocks)
+-------------------------------------------------------------------
+
+Here's how to install outline-client on Slackware.
+
+
+First, fetch the Outline-Client.AppImage:
+
+https://github.com/Jigsaw-Code/outline-client/releases/download/linux-v1.0.9/Outline-Client.AppImage
+
+
+Then, with this AppImage in the same directory as the
+outline-client.SlackBuild script, run the script as root to convert the
+AppImage to a Slackware .txz:
+
+VERSION=1.0.9 ./outline-client.SlackBuild
+
+Change the VERSION value to the same release number as the package as
+needed.
+
+This will produce a Slackware compatible .txz package.  The exact
+version number in the package filename will depend on the version of
+Outline-Client specified, but it will be something like:
+outline-client-1.0.9-x86_64-1zakame.txz
+
+You'll find the output package in the /tmp directory.
+
+
+Then, install the package (again as root):
+
+cd /tmp
+upgradepkg --install-new outline-client-1.0.9-x86_64-1zakame.txz
+
+Do note that this installs the OutlineProxyController daemon, but you
+need to start it before running the outline-client application:
+
+chmod +x /etc/rc.d/rc.outline-proxy
+/etc/rc.d/rc.outline-proxy start
+
+
+Enjoy!  :-)
