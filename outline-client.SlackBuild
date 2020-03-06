@@ -1,0 +1,99 @@
+#!/bin/sh
+
+# Copyright 2020 Zak B. Elep, Makati, Metro Manila, Philippines
+#
+# Redistribution and use of this script, with or without modification, is
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of this script must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ''AS IS'' AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+# EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+PKGNAM=outline-client
+
+ARCH="x86_64"
+
+VERSION=${VERSION:-1.0.9}
+BUILD=${BUILD:-1zakame}
+
+
+if [ ! $UID = 0 ]; then
+  cat << EOF
+
+This script must be run as root.
+
+EOF
+  exit 1
+fi
+
+if ! /bin/ls Outline-Client.AppImage 1> /dev/null 2> /dev/null ; then
+  cat << EOF
+
+This is a script to repackage the Outline VPN client AppImage package
+for Slackware.  Run this script in the same directory containing
+
+  Outline-Client.AppImage
+
+This will create a Slackware .txz package.  Install it with installpkg
+or use upgradepkg to upgrade from a previous version.
+
+EOF
+  exit 1
+fi
+
+CWD=$(pwd)
+TMP=${TMP:-/tmp}
+PKG=$TMP/package-$PKGNAM
+OUTPUT=${OUTPUT:-/tmp}
+
+rm -rf $PKG
+mkdir -p $TMP $PKG $OUTPUT
+cd $PKG
+chmod +x $CWD/Outline-Client.AppImage
+$CWD/Outline-Client.AppImage --appimage-extract || exit 1
+mkdir -p $PKG/opt
+find $PKG/squashfs-root -type d -exec chmod 0755 "{}" \;
+mv $PKG/squashfs-root $PKG/opt/outline-client
+chown -R root:root .
+chmod -R u+w,go+r-w,a-s .
+
+# Make sure top-level perms are correct:
+chmod 0755 .
+
+# Link client binary to /usr/bin:
+mkdir -p $PKG/usr/bin
+( cd $PKG/usr/bin ; ln -sf ../../opt/outline-client/outline-client outline-client )
+
+# Install a .desktop launcher:
+mkdir -p $PKG/usr/share/applications
+cp $PKG/opt/outline-client/outline-client.desktop $PKG/usr/share/applications/outline-client.desktop
+sed -i -e "s#Exec=AppRun#Exec=/opt/outline-client/outline-client#;
+           s#Icon=outline-client#Icon=/opt/outline-client/outline-client.png#;" \
+    $PKG/usr/share/applications/outline-client.desktop
+
+# Install OutlineProxyController in /usr/sbin:
+mkdir -p $PKG/usr/sbin
+( cd $PKG/usr/sbin ; ln -sf ../../opt/outline-client/resources/app.asar.unpacked/tools/outline_proxy_controller/dist/OutlineProxyController OutlineProxyController )
+
+# Add init script:
+mkdir -p $PKG/etc/rc.d
+cp $CWD/rc.outline-proxy $PKG/etc/rc.d/rc.outline-proxy.new
+
+mkdir -p $PKG/install
+cat $CWD/slack-desc > $PKG/install/slack-desc
+cat $CWD/doinst.sh > $PKG/install/doinst.sh
+
+cd $PKG
+/sbin/makepkg -l y -c n $OUTPUT/$PKGNAM-$VERSION-$ARCH-$BUILD.txz
+

@@ -1,0 +1,49 @@
+#!/bin/sh
+# Start/stop OutlineProxyController.
+#
+# Copyright 2020 Zak B. Elep, Makati, Metro Manila, Philippines
+#
+# This program comes with NO WARRANTY, to the extent permitted by law.
+# You may redistribute copies of this program under the terms of the
+# GNU General Public License.
+
+outline_controller_start() {
+  if [ -x /usr/sbin/OutlineProxyController ]; then
+    echo "Starting Outline VPN Proxy Controller: /usr/sbin/OutlineProxyController"
+    /usr/sbin/OutlineProxyController --log-filename=/var/log/outline_controller.log --socket-filename=/var/run/outline_controller 1>/dev/null 2>/dev/null &
+  fi
+}
+
+outline_controller_stop() {
+  if ps -C OutlineProxyCon | grep -q OutlineProxyCon 2>/dev/null ; then
+    echo "Stopping Outline VPN Proxy Controller."
+    if ! /usr/bin/pkill -TERM OutlineProxyCon ; then
+      sleep 5 "Killing Outline VPN Proxy Controller."
+      /usr/bin/pkill -KILL OutlineProxyCon
+      sleep 5
+      if ps -C OutlineProxyCon | grep -q OutlineProxyCon 2>/dev/null ; then
+        echo "Error: couldn't stop Outline VPN Proxy Controller."
+      fi
+    fi
+  fi
+}
+
+outline_controller_restart() {
+  outline_controller_stop
+  sleep 1
+  outline_controller_start
+}
+
+case "$1" in
+'start')
+  outline_controller_start
+  ;;
+'stop')
+  outline_controller_stop
+  ;;
+'restart')
+  outline_controller_restart
+  ;;
+*)
+  echo "usage $0 start|stop|restart"
+esac
